@@ -10,11 +10,13 @@ object BatteryLog {
 
     private const val SOCKET = "app.cabinwright.battery.log"
     private const val STALE_MS = 3 * 60_000L
+    private const val TIMEOUT_MS = 2_000
 
     fun read(): List<Sample> {
         val socket = LocalSocket()
         return try {
             socket.connect(LocalSocketAddress(SOCKET))
+            socket.soTimeout = TIMEOUT_MS
             socket.inputStream.bufferedReader().readLines().mapNotNull { parse(it) }
         } catch (ignored: IOException) {
             emptyList()
