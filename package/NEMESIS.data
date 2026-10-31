@@ -1,0 +1,11 @@
+[nemesis]
+id=cabinwright.battery
+name=Battery
+version=1.0
+types=application
+
+[app.0]
+kind=apk
+path=battery.apk
+package=app.cabinwright.battery
+component=app.cabinwright.battery/.BatteryActivity

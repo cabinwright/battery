@@ -1,0 +1,4 @@
+dist/
+*.apk
+*.dex
+.DS_Store
