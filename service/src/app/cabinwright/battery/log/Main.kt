@@ -8,7 +8,9 @@
 package app.cabinwright.battery.log
 
 import android.net.LocalServerSocket
+import android.net.LocalSocket
 import java.io.File
+import java.io.FileDescriptor
 import java.io.IOException
 import java.util.ArrayDeque
 
@@ -98,6 +100,23 @@ private fun sampling(file: File) {
     }
 }
 
+/**
+ * On Android 4.4 LocalSocket.close() leaves an accepted socket open, so the app would wait forever
+ * for the end of the data: the descriptor is closed here, the way LocalSocketImpl does it.
+ */
+private fun close(socket: LocalSocket) {
+    val fd = socket.fileDescriptor
+    try {
+        socket.close()
+        val os = Class.forName("libcore.io.Libcore").getField("os").get(null)
+        Class.forName("libcore.io.Os").getMethod("close", FileDescriptor::class.java).invoke(os, fd)
+    } catch (e: IOException) {
+        println("battery log: $e")
+    } catch (e: ReflectiveOperationException) {
+        println("battery log: $e")
+    }
+}
+
 private fun serving() {
     val server = LocalServerSocket(SOCKET)
     while (true) {
@@ -108,7 +127,7 @@ private fun serving() {
         } catch (e: IOException) {
             println("battery log: $e")
         } finally {
-            client.close()
+            close(client)
         }
     }
 }

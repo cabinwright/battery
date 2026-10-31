@@ -133,11 +133,9 @@ class BatteryActivity : CarPage() {
     private fun poll() {
         val state = CarVehicle.state()
         val session = CarVehicle.conditioning()
+        handler.post { show(state, session) }
         val samples = BatteryLog.read()
-        handler.post {
-            show(state, session)
-            showTemperature(samples)
-        }
+        handler.post { showTemperature(samples) }
     }
 
     private fun tapped() {
