@@ -12,9 +12,10 @@ import app.cabinwright.api.ui.CarPage
 import java.util.Locale
 
 /**
- * Battery: the car's battery levels, and battery conditioning on the screen the app opens to,
- * so it can be started on the way to a charger. The store runs the session, so closing the app
- * doesn't end it, and only the car itself saying so shows it as running.
+ * Battery: the car's battery levels, its temperature over time, and battery conditioning on the
+ * screen the app opens to, so it can be started on the way to a charger. The store runs the
+ * session, so closing the app doesn't end it, and only the car itself saying so shows it as
+ * running. The temperature comes from the package's battery-log service.
  */
 class BatteryActivity : CarPage() {
     private val handler = Handler()
@@ -23,6 +24,8 @@ class BatteryActivity : CarPage() {
     private lateinit var main: TextView
     private lateinit var twelve: TextView
     private lateinit var health: TextView
+    private lateinit var temperature: TextView
+    private lateinit var chart: TemperatureChart
     private lateinit var phase: TextView
     private lateinit var detail: TextView
     private lateinit var action: TextView
@@ -49,13 +52,33 @@ class BatteryActivity : CarPage() {
         row.setPadding(dp(PADDING), dp(PADDING), dp(PADDING), dp(PADDING))
         page.addView(row, LinearLayout.LayoutParams(FILL, 0, 1f))
         row.addView(conditioningPanel(), LinearLayout.LayoutParams(0, FILL, 1f))
+        val side = LinearLayout(this)
+        side.orientation = LinearLayout.VERTICAL
+        side.setPadding(dp(PADDING), 0, 0, 0)
+        row.addView(side, LinearLayout.LayoutParams(0, FILL, READINGS_WEIGHT))
         val readings = LinearLayout(this)
-        readings.orientation = LinearLayout.VERTICAL
-        readings.setPadding(dp(PADDING), 0, 0, 0)
-        row.addView(readings, LinearLayout.LayoutParams(0, FILL, 1f))
+        readings.orientation = LinearLayout.HORIZONTAL
+        side.addView(readings, LinearLayout.LayoutParams(FILL, WRAP))
         main = reading(readings, "Main battery")
+        temperature = reading(readings, "Temperature")
         twelve = reading(readings, "12V battery")
-        health = reading(readings, "Battery health")
+        health = reading(readings, "Health")
+        val below = LinearLayout.LayoutParams(FILL, 0, 1f)
+        below.topMargin = dp(PADDING)
+        side.addView(chartPanel(), below)
+    }
+
+    private fun chartPanel(): View {
+        val panel = LinearLayout(this)
+        panel.orientation = LinearLayout.VERTICAL
+        panel.background = surface(dp(RADIUS))
+        panel.setPadding(dp(PADDING), dp(PADDING), dp(PADDING), dp(PADDING))
+        panel.addView(text("Lowest battery temperature, °F", TITLE_SP, MUTED, false))
+        chart = TemperatureChart(this, MUTED, EDGE, ACCENT_END and SHADE_MASK or SHADE_ALPHA, ICON_START, ACCENT_END)
+        val size = LinearLayout.LayoutParams(FILL, 0, 1f)
+        size.topMargin = dp(PADDING / 2)
+        panel.addView(chart, size)
+        return panel
     }
 
     private fun conditioningPanel(): View {
@@ -85,11 +108,10 @@ class BatteryActivity : CarPage() {
     private fun reading(parent: LinearLayout, label: String): TextView {
         val box = LinearLayout(this)
         box.orientation = LinearLayout.VERTICAL
-        box.setGravity(Gravity.CENTER_VERTICAL)
         box.addView(text(label, TITLE_SP, MUTED, false))
         val value = text("–", VALUE_SP, TEXT, false)
         box.addView(value)
-        parent.addView(box, LinearLayout.LayoutParams(FILL, 0, 1f))
+        parent.addView(box, LinearLayout.LayoutParams(0, WRAP, 1f))
         return value
     }
 
@@ -111,7 +133,11 @@ class BatteryActivity : CarPage() {
     private fun poll() {
         val state = CarVehicle.state()
         val session = CarVehicle.conditioning()
-        handler.post { show(state, session) }
+        val samples = BatteryLog.read()
+        handler.post {
+            show(state, session)
+            showTemperature(samples)
+        }
     }
 
     private fun tapped() {
@@ -128,6 +154,13 @@ class BatteryActivity : CarPage() {
             }
             poll()
         }
+    }
+
+    private fun showTemperature(samples: List<BatteryLog.Sample>) {
+        temperature.text = BatteryLog.current(samples)?.let {
+            String.format(Locale.US, "%.0f°F", TemperatureChart.fahrenheit(it))
+        } ?: "–"
+        chart.show(samples)
     }
 
     private fun show(state: CarVehicle.State?, session: CarVehicle.Conditioning?) {
@@ -178,7 +211,10 @@ class BatteryActivity : CarPage() {
         const val TITLE_SP = 18
         const val STATE_SP = 32
         const val DETAIL_SP = 18
-        const val VALUE_SP = 36
+        const val VALUE_SP = 32
+        const val READINGS_WEIGHT = 2f
+        const val SHADE_MASK = 0x00FFFFFF
+        const val SHADE_ALPHA = 0x38000000
         const val ACTION_SP = 28
         const val ACTION_HEIGHT = 96
     }

@@ -10,8 +10,14 @@ charger. The store runs the session, so closing the app doesn't end it. It shows
 when the car itself says so. A start can take a minute or two, and the car may decline if the
 battery doesn't need it.
 
-All the car access goes through the store's `vehicle` and `conditioning` capabilities
-(`CarVehicle` in the [SDK](https://github.com/cabinwright/sdk)), so it needs store 1.2.
+The graph shows the battery's lowest cell temperature over the last six hours, with conditioning
+shaded and breaks where the head unit was off. The package's `battery-log` service tweak (`service/`)
+takes a sample a minute through the store's `kt`, keeps them on the head unit, and gives them to
+the app over a local socket. Turn it off in Tweaks to stop it.
+
+Levels and conditioning go through the store's `vehicle` and `conditioning` capabilities (`CarVehicle`
+in the [SDK](https://github.com/cabinwright/sdk)), and the service declares its own binder needs, so
+it needs store 1.3 for `kt listen`.
 
 ## Build
 
